@@ -3,6 +3,8 @@
 
 #include "PCH.h"
 
+#include "AddressLibraryGuard.h"
+
 #include "Clipmap.h"
 #include "Globals.h"
 #include "Hooks.h"
@@ -85,6 +87,13 @@ SKSEPluginInfo(
 SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
 	InitLogging();
+
+	// Before SKSE::Init, which opens the Address Library: a missing file is named and the plugin loads inert,
+	// instead of CommonLib's bare failure line.
+	if (!AddressLibraryGuard::Guard("Dynamic Terrain Deformation Bloodpool Patch")) {
+		return true;
+	}
+
 	SKSE::Init(a_skse);
 
 	SKSE::AllocTrampoline(1 << 8);

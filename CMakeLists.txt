@@ -12,6 +12,12 @@ option(ENABLE_SKYRIM_VR "Build experimental Skyrim VR support" ON)
 set(BUILD_TESTS      OFF CACHE BOOL "" FORCE)
 set(SKSE_SUPPORT_XBYAK ON CACHE BOOL "" FORCE)
 
+# No build-machine paths in the DLL, CommonLib's and MinHook's own sources included.
+if(MSVC)
+    file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" TRIM_ROOT_NATIVE)
+    add_compile_options("/d1trimfile:${TRIM_ROOT_NATIVE}")
+endif()
+
 add_subdirectory(extern/CommonLibSSE-NG CommonLibSSE EXCLUDE_FROM_ALL)
 add_subdirectory(extern/minhook EXCLUDE_FROM_ALL)
 

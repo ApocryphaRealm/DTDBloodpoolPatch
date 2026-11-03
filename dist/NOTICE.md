@@ -1,3 +1,8 @@
+Dynamic Terrain Deformation Bloodpool Patch
+Modified version of Dynamic_Terrain_Deformation_Skse (branch 1.7, commit b83ebf3), changed 2026-11-03 by ApocryphaRealm:
+Dynamic Bloodpool Framework pools on land follow the deformed ground. Licensed under GNU GPL version 3 only (GPL-3.0-only).
+src/AddressLibraryGuard.h is our own code, GPL-3.0-or-later.
+
 Dynamic_Terrain_Deformation_Skse
 Copyright (c) 2026 NearMidnightNow (also published as Maglarnet / NMN).
 
