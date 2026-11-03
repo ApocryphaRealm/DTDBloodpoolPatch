@@ -21,6 +21,9 @@ namespace BloodDecals
 		std::unordered_set<std::string> reportedDrawTextures;
 		bool reportedDraw{}, reportedSkip{}, reportedStart{};
 		std::unordered_set<RE::BSTempEffect*> visited;
+		// This frame's answers for Dynamic Bloodpool Framework shapes (a pool's shapes are tested once a frame).
+		std::unordered_map<RE::BSGeometry*, bool> poolShapes;
+		uint32_t poolsReported{};
 
 		std::unordered_set<RE::BGSDecalNode*> observedNodes;
 		std::array<size_t, 6> lastCounts{};
@@ -50,6 +53,34 @@ namespace BloodDecals
 			if (reported.size() < 64 && reported.insert(key).second) {
 				logger::info("Blood decals B4: {} texture={}", kind, path ? path : "");
 			}
+		}
+		// A pool is a mesh placed by Dynamic Bloodpool Framework, not a decal, so it is never in the decal
+		// manager's lists. Its height comes from a collision ray, which sees the bare land under the snow, so a
+		// pool on land takes the same displacement as the land it lies on. A pool on a rock, a bridge or a
+		// floor has no land under it to follow and stays native.
+		bool PoolOnLand(RE::BSGeometry* geometry)
+		{
+			if (!Settings::enableBloodPools || !geometry) { return false; }
+			if (!BloodDecalFilter::IsPoolShapeName(geometry->name.c_str())) { return false; }
+			auto* root = geometry->parent;
+			if (!root || !BloodDecalFilter::IsPoolRootName(root->name.c_str())) { return false; }
+
+			if (const auto it = poolShapes.find(geometry); it != poolShapes.end()) { return it->second; }
+
+			auto* tes = RE::TES::GetSingleton();
+			float landZ = 0.0f;
+			const auto& position = root->world.translate;
+			const bool hasLand = tes && tes->GetLandHeight(position, landZ);
+			const bool onLand = hasLand && BloodDecalFilter::PoolLiesOnLand(position.z, landZ);
+			poolShapes.emplace(geometry, onLand);
+			if (poolsReported < 32) {
+				++poolsReported;
+				logger::info("Blood pools: shape {} at ({:.0f}, {:.0f}, {:.1f}) land {} -> {}",
+					geometry->name.c_str(), position.x, position.y, position.z,
+					hasLand ? std::format("{:.1f}", landZ) : std::string("none"),
+					onLand ? "follows the ground" : "kept native");
+			}
+			return onLand;
 		}
 		void Observe(RE::BSTempEffect* effect)
 		{
@@ -108,6 +139,7 @@ namespace BloodDecals
 		targets.clear();
 		visited.clear();
 		observedNodes.clear();
+		poolShapes.clear();
 		if (!Settings::enableBloodDecals || !Settings::enableTessellation || !Settings::useClipmap) { return; }
 		if (!reportedStart) {
 			reportedStart = true;
@@ -147,9 +179,12 @@ namespace BloodDecals
 	{
 		if (!Settings::enableBloodDecals || !Settings::useClipmap || !geometry) { return false; }
 		const auto& data = geometry->GetGeometryRuntimeData();
-		if (data.skinInstance) { return false; }
 		auto* property = data.shaderProperty.get();
 		using Flag = RE::BSShaderProperty::EShaderPropertyFlag;
+		// Skinned decals on actors stop here. Pool shapes are the one skinned kind that follows the ground.
+		if (data.skinInstance) {
+			return property && property->flags.any(Flag::kDecal, Flag::kDynamicDecal) && PoolOnLand(geometry);
+		}
 		return BloodRoutingGate::Candidate(true, true, false,
 			property && property->flags.any(Flag::kDecal, Flag::kDynamicDecal),
 			[&] { return !targets.empty() && targets.contains(geometry); });
@@ -160,7 +195,7 @@ namespace BloodDecals
 		if (!Settings::enableBloodDecals || !geometry) { return false; }
 		if (targets.contains(geometry)) { return true; }
 
-		if (geometry->GetGeometryRuntimeData().skinInstance) { return false; }
+		if (geometry->GetGeometryRuntimeData().skinInstance) { return PoolOnLand(geometry); }
 		auto* property = geometry->GetGeometryRuntimeData().shaderProperty.get();
 		using Flag = RE::BSShaderProperty::EShaderPropertyFlag;
 		if (!property || !property->flags.any(Flag::kDecal, Flag::kDynamicDecal)) { return false; }
@@ -202,6 +237,7 @@ namespace BloodDecals
 	void Reset()
 	{
 		targets.clear(); reported.clear(); reportedDrawTextures.clear();
+		poolShapes.clear(); poolsReported = 0;
 		visited.clear(); observedNodes.clear(); lastCounts = {}; nextCensus = {};
 		reportedDraw = reportedSkip = reportedStart = false;
 	}

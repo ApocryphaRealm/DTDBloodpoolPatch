@@ -6,6 +6,25 @@
 
 namespace BloodDecalFilter
 {
+	// A Dynamic Bloodpool Framework pool: a skinned shape named Decal:NN or DecalExt:NN that sits directly
+	// under the mesh's root node, named DynamicDecal in all four meshes the framework ships.
+	inline bool IsPoolShapeName(std::string_view name)
+	{
+		return name.starts_with("Decal:") || name.starts_with("DecalExt:");
+	}
+	inline bool IsPoolRootName(std::string_view name)
+	{
+		return name == "DynamicDecal";
+	}
+	// How far a pool's root may be from the land height and still count as lying on land. The framework
+	// places the root where its ray hit collision, which differs slightly from the height map on a slope.
+	inline constexpr float kPoolLandTolerance = 6.0f;
+	inline bool PoolLiesOnLand(float poolZ, float landZ)
+	{
+		const float gap = poolZ - landZ;
+		return gap <= kPoolLandTolerance && gap >= -kPoolLandTolerance;
+	}
+
 
 	inline bool Matches(std::string_view path, std::string_view prefixes)
 	{

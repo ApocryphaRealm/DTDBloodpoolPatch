@@ -392,6 +392,8 @@ namespace Settings
 			stampFootShape = AsBool(value);
 		} else if (key == "EnableBloodDecals") {
 			enableBloodDecals = AsBool(value);
+		} else if (key == "EnableBloodPools") {
+			enableBloodPools = AsBool(value);
 		} else if (key == "BloodDecalsIgnoreShaderIdentity") {
 			bloodDecalsIgnoreShaderIdentity = AsBool(value);
 		} else if (key == "BloodDecalTexturePrefixes") {

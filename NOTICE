@@ -62,3 +62,10 @@ Upstream: https://github.com/alandtse/CommonLibSSE-NG
 Copyright notices for Ryan-rsm-McKenzie and other upstream contributors are
 retained in the dependency. Its GNU GPL v3 text, upstream exceptions, original
 MIT notice and hde64 notice are reproduced in dist/licenses/CommonLibSSE-NG/.
+
+Dynamic Terrain Deformation Bloodpool Patch
+  Copyright (c) 2026 ApocryphaRealm. GPL-3.0-only.
+  A fork of this project at branch 1.7, commit b83ebf3. It adds Dynamic Bloodpool
+  Framework pools to the blood decal route (src/BloodDecals.cpp, src/BloodDecalFilter.h,
+  and the EnableBloodPools setting). The names of DBF's mesh nodes come from
+  Seb263/SkyrimSE_DynamicBloodpoolFramework; no DBF code is included.

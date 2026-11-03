@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(NMN_DeformableTerrain VERSION 0.1.0 LANGUAGES CXX)
+project(NMN_DeformableTerrain VERSION 1.0.0 LANGUAGES CXX)
 
 option(ENABLE_SKYRIM_SE "Build Skyrim SE support" ON)
 option(ENABLE_SKYRIM_AE "Build Skyrim AE support" ON)
@@ -44,6 +44,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_precompile_headers(${PROJECT_NAME} PRIVATE include/PCH.h)
+
+# The patch's own version: the DLL's VERSIONINFO and the SKSE declaration both come from the project version.
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.rc.in ${CMAKE_CURRENT_BINARY_DIR}/version.rc @ONLY)
+target_sources(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    PLUGIN_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    PLUGIN_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    PLUGIN_VERSION_PATCH=${PROJECT_VERSION_PATCH})
+
+# Symbols beside the DLL, and no build-machine paths inside it.
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /Zi)
+    target_link_options(${PROJECT_NAME} PRIVATE /DEBUG:FULL /OPT:REF /OPT:ICF /INCREMENTAL:NO /PDBALTPATH:%_PDB%)
+    file(TO_NATIVE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" PROJECT_NATIVE_DIR)
+    target_compile_options(${PROJECT_NAME} PRIVATE "/d1trimfile:${PROJECT_NATIVE_DIR}")
+endif()
 
 option(TERRAIN_PROFILE_SYMBOLS "Emit PDB symbols without changing Release optimization" OFF)
 if(MSVC AND TERRAIN_PROFILE_SYMBOLS)
