@@ -1,5 +1,8 @@
-# Snow meshes that take footprints, in a world named by CityWorldsAllowed in NMN_DeformableTerrain.ini.
-# Empty as shipped: nothing is routed, in any world.
+# Snow meshes that take footprints, in a world named by CityWorldsAllowed in NMN_DeformableTerrain.ini or by a
+# "world = 0001691D" line in a list. Empty as shipped: nothing is routed, in any world.
+#
+# A mod that ships a list does not overwrite this file: it adds its own .txt to the folder
+# SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\, which is read the same way.
 #
 # One shape a line: model path | shape name. Case does not matter.
 #   architecture\windhelm\whmarket01.nif | WHmarket01:0.008

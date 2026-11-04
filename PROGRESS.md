@@ -35,6 +35,18 @@ static mesh about 900 units above Tamriel's land, in a city world. Five things s
 The field itself has no height: a print shows on every listed shape over that spot, which is why this is a list and not
 a material test. Coverage and shelter keep reading land in an allowed world; only land uses them.
 
+6. What turns a world on (added under 1.1.0 on 2026-11-04, for a separate list mod). A list may carry
+   `world = 0001691D`; it counts only in a file that also holds shapes. Lists are the old single file plus every .txt in
+   `SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\`, so a list mod overwrites nothing and needs no load order against
+   this package. CityWorldsAllowed keeps working. No list: nothing changes, in any world.
+7. The ground ray (also 2026-11-04). The owner's first working run's log: of the 24 hit lines kept (one per distinct
+   reference, capped, so not a rate), 3 were listed; 11 had no model, led by ref 00000014, the player, and 7 were NPC
+   Senses' invisible boxes (bhkSimpleShapePhantom, layer 54 for vision, 12 for aura). So the earlier note that the pathing pick
+   passes through actors was wrong, and any such hit cost that foot its print. The ray now passes through an actor or
+   anything not on a floor layer, at most four times, and each hit's layer is logged. The stamp gates still measure the
+   feet against the surface found. A hit on an unlisted static still stops it: WHcenter3's only shape is stair block, so
+   stone stays stone.
+
 Not built: magic and arrow impacts on the mesh (their gates still measure land). Heat melts still read the land type under
 the mesh, so a fire over snow-typed land dents a listed shape.
 

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
-// The text of the snow shape list: one "model.nif | shape name" per line, # or ; starts a comment line.
+// The text of the snow shape list: one "model.nif | shape name" per line, # or ; starts a comment line,
+// and "world = 0001691D" names a city world the list turns on.
 // Kept free of game types so tools/offline/SnowShapeListTest.cpp can run it.
 namespace SnowShapeList
 {
@@ -39,6 +41,26 @@ namespace SnowShapeList
 	inline std::string Key(std::string_view a_model, std::string_view a_shape)
 	{
 		return Model(a_model) + "|" + Lower(Trimmed(a_shape));
+	}
+
+	// The form ID of a "world = 0001691D" line. False for any other line, and for a value that is not eight hex digits.
+	inline bool ParseWorld(std::string_view a_line, uint32_t& a_world)
+	{
+		const auto line = Trimmed(a_line);
+		const auto equals = line.find('=');
+		if (equals == std::string_view::npos || line.find('|') != std::string_view::npos) { return false; }
+		if (Lower(Trimmed(line.substr(0, equals))) != "world") { return false; }
+		const auto value = Trimmed(line.substr(equals + 1));
+		if (value.size() != 8) { return false; }
+		uint32_t world = 0;
+		for (const char c : value) {
+			const int digit = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+			if (digit < 0) { return false; }
+			world = world * 16 + static_cast<uint32_t>(digit);
+		}
+		if (world == 0) { return false; }
+		a_world = world;
+		return true;
 	}
 
 	// The model and the key of one line. False for a blank line, a comment or a line with no shape name.

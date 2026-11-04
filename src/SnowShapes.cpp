@@ -9,16 +9,21 @@
 #include <fstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace SnowShapes
 {
 	namespace
 	{
 		constexpr auto kPath = "Data/SKSE/Plugins/NMN_DeformableTerrain_SnowShapes.txt";
+		// One .txt per mod that ships a list, so two lists meet here instead of overwriting one file.
+		constexpr auto kFolder = "Data/SKSE/Plugins/NMN_DeformableTerrain_SnowShapes";
 
 		// A ray from this far above the point to this far below it finds the surface under standing feet.
 		constexpr float kRayAbove = 32.0f;
 		constexpr float kRayBelow = 96.0f;
+		// How many things that are not a floor one ray may pass through before it gives up.
+		constexpr int kMaxRayPasses = 4;
 
 		constexpr size_t kMaxDraws = 1 << 16;
 		constexpr uint32_t kMaxNotListedLogged = 24;
@@ -26,6 +31,7 @@ namespace SnowShapes
 
 		std::unordered_set<std::string> g_shapes;
 		std::unordered_set<std::string> g_models;
+		std::unordered_set<uint32_t> g_listWorlds;
 
 		std::atomic<bool> g_active{ false };
 		uint32_t g_world{ 0 };
@@ -73,7 +79,24 @@ namespace SnowShapes
 			return listed;
 		}
 
-		bool RefIsListed(RE::TESObjectREFR* a_ref)
+		// What feet can stand on. A ray also meets invisible volumes (NPC Senses' vision and aura boxes sit on
+		// layer 54 and the trigger layer), actors and clutter, none of which is the ground under a foot.
+		bool IsFloor(RE::COL_LAYER a_layer)
+		{
+			switch (a_layer) {
+			case RE::COL_LAYER::kStatic:
+			case RE::COL_LAYER::kAnimStatic:
+			case RE::COL_LAYER::kTerrain:
+			case RE::COL_LAYER::kGround:
+			case RE::COL_LAYER::kTrees:
+			case RE::COL_LAYER::kProps:
+				return true;
+			default:
+				return false;
+			}
+		}
+
+		bool RefIsListed(RE::TESObjectREFR* a_ref, RE::COL_LAYER a_layer)
 		{
 			const auto id = a_ref->GetFormID();
 			if (const auto it = g_refs.find(id); it != g_refs.end()) { return it->second; }
@@ -82,8 +105,8 @@ namespace SnowShapes
 			g_refs.emplace(id, listed);
 			if (g_groundLogged < kMaxGroundLogged) {
 				++g_groundLogged;
-				logger::info("Snow shapes: ground ray hit ref {:08X} model {} -> {}", id, model ? model : "<none>",
-					listed ? "listed" : "not listed");
+				logger::info("Snow shapes: ground ray hit ref {:08X} layer {} model {} -> {}", id, static_cast<uint32_t>(a_layer),
+					model ? model : "<none>", listed ? "listed" : "not listed");
 			}
 			return listed;
 		}
@@ -92,27 +115,54 @@ namespace SnowShapes
 	std::filesystem::file_time_type ListWriteTime()
 	{
 		std::error_code ec;
-		const auto when = std::filesystem::last_write_time(kPath, ec);
-		return ec ? std::filesystem::file_time_type{} : when;
+		auto newest = std::filesystem::last_write_time(kPath, ec);
+		if (ec) { newest = {}; }
+		for (std::filesystem::directory_iterator it(kFolder, ec), end; !ec && it != end; it.increment(ec)) {
+			std::error_code timeError;
+			const auto when = std::filesystem::last_write_time(it->path(), timeError);
+			if (!timeError && when > newest) { newest = when; }
+		}
+		return newest;
 	}
 
 	void Load()
 	{
 		g_shapes.clear();
 		g_models.clear();
-		std::ifstream file(kPath);
-		if (!file) {
-			logger::info("Snow shapes: no {}, none listed", kPath);
-			return;
+		g_listWorlds.clear();
+
+		std::vector<std::filesystem::path> files{ kPath };
+		std::error_code ec;
+		for (std::filesystem::directory_iterator it(kFolder, ec), end; !ec && it != end; it.increment(ec)) {
+			if (SnowShapeList::Lower(it->path().extension().string()) == ".txt") { files.push_back(it->path()); }
 		}
+
 		std::string line, model, key;
-		while (std::getline(file, line)) {
-			if (SnowShapeList::Parse(line, model, key)) {
-				g_shapes.insert(key);
-				g_models.insert(model);
+		for (const auto& path : files) {
+			std::ifstream file(path);
+			if (!file) { continue; }
+			uint32_t shapes = 0, world = 0;
+			std::vector<uint32_t> worlds;
+			while (std::getline(file, line)) {
+				if (SnowShapeList::Parse(line, model, key)) {
+					g_shapes.insert(key);
+					g_models.insert(model);
+					++shapes;
+				} else if (SnowShapeList::ParseWorld(line, world)) {
+					worlds.push_back(world);
+				}
 			}
+			// A world counts only beside shapes: without any there is nothing to route there.
+			if (shapes > 0) { g_listWorlds.insert(worlds.begin(), worlds.end()); }
+			logger::info("Snow shapes: {}: {} shape line(s), {} world line(s){}", path.filename().string(), shapes, worlds.size(),
+				shapes == 0 && !worlds.empty() ? ", worlds ignored" : "");
 		}
-		logger::info("Snow shapes: {} shape(s) in {} model(s) listed", g_shapes.size(), g_models.size());
+		logger::info("Snow shapes: {} shape(s) in {} model(s) listed, {} world(s) named by lists", g_shapes.size(), g_models.size(), g_listWorlds.size());
+	}
+
+	bool ListNamesWorld(uint32_t a_world)
+	{
+		return g_listWorlds.contains(a_world);
 	}
 
 	void SetWorld(uint32_t a_world)
@@ -165,31 +215,41 @@ namespace SnowShapes
 		if (!tes) { return false; }
 
 		const float scale = RE::bhkWorld::GetWorldScale();
-		const float fromZ = a_at.z + kRayAbove;
+		float fromZ = a_at.z + kRayAbove;
 		const float toZ = a_at.z - kRayBelow;
 
-		RE::bhkPickData pick;
-		pick.rayInput.from = RE::hkVector4(a_at.x * scale, a_at.y * scale, fromZ * scale, 0.0f);
-		pick.rayInput.to = RE::hkVector4(a_at.x * scale, a_at.y * scale, toZ * scale, 0.0f);
-		// The pathing pick meets statics, ground and terrain, and passes through actors and clutter
-		// (the COLL records in Skyrim.esm), so the ray does not stop on the feet it starts from.
-		pick.rayInput.filterInfo.SetCollisionLayer(RE::COL_LAYER::kPathPick);
-		tes->Pick(pick);
+		for (int pass = 0; pass < kMaxRayPasses && fromZ > toZ; ++pass) {
+			RE::bhkPickData pick;
+			pick.rayInput.from = RE::hkVector4(a_at.x * scale, a_at.y * scale, fromZ * scale, 0.0f);
+			pick.rayInput.to = RE::hkVector4(a_at.x * scale, a_at.y * scale, toZ * scale, 0.0f);
+			pick.rayInput.filterInfo.SetCollisionLayer(RE::COL_LAYER::kPathPick);
+			tes->Pick(pick);
 
-		if (!pick.rayOutput.HasHit() || !pick.rayOutput.rootCollidable) { return false; }
-		auto* ref = RE::TESHavokUtilities::FindCollidableRef(*pick.rayOutput.rootCollidable);
-		if (!ref) {
-			if (!g_noRefLogged) {
-				g_noRefLogged = true;
-				logger::info("Snow shapes: ground ray hit something with no reference (land, or an unowned body) at ({:.0f}, {:.0f}, {:.0f})",
-					a_at.x, a_at.y, a_at.z);
+			if (!pick.rayOutput.HasHit() || !pick.rayOutput.rootCollidable) { return false; }
+			const float hitZ = fromZ + (toZ - fromZ) * std::clamp(pick.rayOutput.hitFraction, 0.0f, 1.0f);
+			const auto layer = pick.rayOutput.rootCollidable->GetCollisionLayer();
+			auto* ref = RE::TESHavokUtilities::FindCollidableRef(*pick.rayOutput.rootCollidable);
+			const bool actor = ref && ref->As<RE::Actor>();
+
+			// The log shows this ray meeting the player, other actors and invisible volumes despite the pick
+			// layer, so what stops it is decided here. The stamp gates still measure the feet against the
+			// surface found, so passing through something cannot print on a floor far below.
+			if (ref && !actor && RefIsListed(ref, layer)) {
+				a_surfaceZ = hitZ;
+				return true;
 			}
-			return false;
-		}
-		if (!RefIsListed(ref)) { return false; }
+			if (!actor && IsFloor(layer)) {
+				if (!ref && !g_noRefLogged) {
+					g_noRefLogged = true;
+					logger::info("Snow shapes: ground ray hit something with no reference (land, or an unowned body) at ({:.0f}, {:.0f}, {:.0f})",
+						a_at.x, a_at.y, a_at.z);
+				}
+				return false;
+			}
 
-		a_surfaceZ = fromZ + (toZ - fromZ) * std::clamp(pick.rayOutput.hitFraction, 0.0f, 1.0f);
-		return true;
+			fromZ = hitZ - 1.0f;
+		}
+		return false;
 	}
 
 	Surfaces::Ground ShapeGround()

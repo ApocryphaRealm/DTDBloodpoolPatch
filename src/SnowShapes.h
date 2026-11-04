@@ -6,13 +6,17 @@
 
 namespace RE { class BSGeometry; class NiPoint3; }
 
-// Listed snow meshes that take the deformation field, in a world named by CityWorldsAllowed. The list is
-// SKSE\Plugins\NMN_DeformableTerrain_SnowShapes.txt. With no list or no such world, Active() stays false and
-// nothing else here runs, so every other world behaves as it did.
+// Listed snow meshes that take the deformation field, in a world named by CityWorldsAllowed or by a list's own
+// "world = 0001691D" line. Lists are SKSE\Plugins\NMN_DeformableTerrain_SnowShapes.txt and every .txt in the
+// SKSE\Plugins\NMN_DeformableTerrain_SnowShapes folder. With no list or no such world, Active() stays false
+// and nothing else here runs, so every other world behaves as it did.
 namespace SnowShapes
 {
 	void Load();
 	std::filesystem::file_time_type ListWriteTime();
+
+	// Does a list that holds shapes name this world?
+	bool ListNamesWorld(uint32_t a_world);
 
 	// The world to act in, 0 for none. Called when terrain activity changes.
 	void SetWorld(uint32_t a_world);

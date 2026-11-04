@@ -853,11 +853,13 @@ namespace Hooks
 		// Bumped when settings reload, so a changed CityWorldsAllowed takes effect without leaving the world.
 		uint32_t g_worldRule{ 1 };
 
-		// A city world named in CityWorldsAllowed (8-digit form IDs) stays active. Empty: the shipped behaviour.
+		// A city world named in CityWorldsAllowed (8-digit form IDs), or by a snow shape list that holds shapes,
+		// stays active. Neither: the shipped behaviour.
 		bool CityWorldAllowed(RE::FormID a_world)
 		{
-			return a_world != 0 && !Settings::cityWorldsAllowed.empty() &&
-				Settings::cityWorldsAllowed.find(std::format("{:08X}", a_world)) != std::string::npos;
+			if (a_world == 0) { return false; }
+			return SnowShapes::ListNamesWorld(a_world) || (!Settings::cityWorldsAllowed.empty() &&
+				Settings::cityWorldsAllowed.find(std::format("{:08X}", a_world)) != std::string::npos);
 		}
 
 		void ApplyReloadedSettings()

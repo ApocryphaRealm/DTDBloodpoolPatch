@@ -44,6 +44,17 @@ int main()
 	Check(!Parse("a.nif |  ", model, key), "no shape");
 	Check(!Parse(" | shape", model, key), "no model");
 
+	// The world line, and everything that must not pass for one.
+	uint32_t world = 0;
+	Check(ParseWorld("world = 0001691D\r", world) && world == 0x0001691D, "world line");
+	Check(ParseWorld("  WORLD=0001691d", world) && world == 0x0001691D, "world line, case and spacing");
+	Check(!ParseWorld("world = 1691D", world), "short form ID");
+	Check(!ParseWorld("world = 00000000", world), "no world");
+	Check(!ParseWorld("world = 0001691G", world), "not hex");
+	Check(!ParseWorld("# world = 0001691D", world), "commented out");
+	Check(!ParseWorld("a.nif | world = 0001691D", world), "a shape line");
+	Check(!Parse("world = 0001691D", model, key), "a world line is not a shape");
+
 	std::printf(g_failures ? "SnowShapeListTest: %d failure(s)\n" : "SnowShapeListTest: ALL PASS\n", g_failures);
 	return g_failures ? 1 : 0;
 }
