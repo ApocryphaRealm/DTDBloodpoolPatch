@@ -2,7 +2,8 @@
 # "world = 0001691D" line in a list. Empty as shipped: nothing is routed, in any world.
 #
 # A mod that ships a list does not overwrite this file: it adds its own .txt to the folder
-# SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\, which is read the same way.
+# SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\, which is read the same way. A "requires = Some.esp" line
+# skips a list unless that plugin is loaded.
 #
 # One shape a line: model path | shape name. Case does not matter.
 #   architecture\windhelm\whmarket01.nif | WHmarket01:0.008

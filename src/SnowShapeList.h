@@ -6,7 +6,8 @@
 #include <string_view>
 
 // The text of the snow shape list: one "model.nif | shape name" per line, # or ; starts a comment line,
-// and "world = 0001691D" names a city world the list turns on.
+// "world = 0001691D" names a city world the list turns on, and "requires = Some.esp" skips the list unless that
+// plugin is loaded.
 // Kept free of game types so tools/offline/SnowShapeListTest.cpp can run it.
 namespace SnowShapeList
 {
@@ -60,6 +61,20 @@ namespace SnowShapeList
 		}
 		if (world == 0) { return false; }
 		a_world = world;
+		return true;
+	}
+
+	// The plugin of a "requires = Windhelm Is Snowy.esp" line, without which the list is skipped.
+	inline bool ParseRequires(std::string_view a_line, std::string& a_plugin)
+	{
+		const auto line = Trimmed(a_line);
+		const auto equals = line.find('=');
+		if (line.empty() || line.front() == '#' || line.front() == ';') { return false; }
+		if (equals == std::string_view::npos || line.find('|') != std::string_view::npos) { return false; }
+		if (Lower(Trimmed(line.substr(0, equals))) != "requires") { return false; }
+		const auto value = Trimmed(line.substr(equals + 1));
+		if (value.empty()) { return false; }
+		a_plugin = std::string(value);
 		return true;
 	}
 

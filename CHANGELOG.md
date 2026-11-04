@@ -12,6 +12,7 @@ Written as changes happen, not reconstructed afterwards (rule 61). Each version 
 
 ### Added
 - Lists are also read from every .txt in SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\, so a mod can ship a list without replacing a file or caring about load order.
+- A requires = Some.esp line in a list skips it unless that plugin is loaded, since a list's shape names can also match the unmodded game's meshes.
 - A snow shape list can turn its own world on: a world = 0001691D line, in a file that also holds shapes. CityWorldsAllowed still works. No list, no change, in any world.
 - Log lines: world active, each listed shape as it is first routed, ground ray hits; profiler lines for routed shape draws and lookup time.
 - Snow shape list, SKSE\Plugins\NMN_DeformableTerrain_SnowShapes.txt: in an allowed world, the listed shapes (model path and shape name) take footprints, and feet standing on a listed model make them. Shipped empty.

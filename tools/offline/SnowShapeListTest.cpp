@@ -55,6 +55,13 @@ int main()
 	Check(!ParseWorld("a.nif | world = 0001691D", world), "a shape line");
 	Check(!Parse("world = 0001691D", model, key), "a world line is not a shape");
 
+	std::string plugin;
+	Check(ParseRequires("requires = Windhelm Is Snowy.esp\r", plugin) && plugin == "Windhelm Is Snowy.esp", "requires line, spaces in the name");
+	Check(!ParseRequires("requires =  ", plugin), "requires with no plugin");
+	Check(!ParseRequires("# requires = a.esp", plugin), "requires commented out");
+	Check(!ParseRequires("world = 0001691D", plugin), "a world line is not requires");
+	Check(!Parse("requires = a.esp", model, key), "a requires line is not a shape");
+
 	std::printf(g_failures ? "SnowShapeListTest: %d failure(s)\n" : "SnowShapeListTest: ALL PASS\n", g_failures);
 	return g_failures ? 1 : 0;
 }

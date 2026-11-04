@@ -39,6 +39,9 @@ a material test. Coverage and shelter keep reading land in an allowed world; onl
    `world = 0001691D`; it counts only in a file that also holds shapes. Lists are the old single file plus every .txt in
    `SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\`, so a list mod overwrites nothing and needs no load order against
    this package. CityWorldsAllowed keeps working. No list: nothing changes, in any world.
+   `requires = Some.esp` skips a file unless that plugin is loaded. Needed: 31 of Windhelm Is Snowy's 68 keys also name
+   shapes of the unmodded game's meshes (read from Skyrim - Meshes0/1.bsa, mud and stone textures), so without the plugin
+   a list would dent the plain street.
 7. The ground ray (also 2026-11-04). The owner's first working run's log: of the 24 hit lines kept (one per distinct
    reference, capped, so not a rate), 3 were listed; 11 had no model, led by ref 00000014, the player, and 7 were NPC
    Senses' invisible boxes (bhkSimpleShapePhantom, layer 54 for vision, 12 for aura). So the earlier note that the pathing pick

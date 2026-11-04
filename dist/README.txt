@@ -17,7 +17,8 @@ snow beside it.
 
 Snow meshes in a city (off unless a list names the world): a city world normally keeps the terrain idle. A snow shape
 list turns a town on: a .txt in SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\ with a "world = 0001691D" line and the
-walked-on shapes, one "model path | shape name" a line. This package ships no such list, so every city stays idle as
+walked-on shapes, one "model path | shape name" a line; a "requires = Some.esp" line skips the list unless that plugin is
+loaded. This package ships no such list, so every city stays idle as
 before. CityWorldsAllowed in NMN_DeformableTerrain.ini names a world too, and SKSE\Plugins\
 NMN_DeformableTerrain_SnowShapes.txt still works as a list. List no roofs: the prints have no height, so a listed roof
 shows the prints of the street under it.

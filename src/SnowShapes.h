@@ -8,7 +8,8 @@ namespace RE { class BSGeometry; class NiPoint3; }
 
 // Listed snow meshes that take the deformation field, in a world named by CityWorldsAllowed or by a list's own
 // "world = 0001691D" line. Lists are SKSE\Plugins\NMN_DeformableTerrain_SnowShapes.txt and every .txt in the
-// SKSE\Plugins\NMN_DeformableTerrain_SnowShapes folder. With no list or no such world, Active() stays false
+// SKSE\Plugins\NMN_DeformableTerrain_SnowShapes folder; a list's "requires = Some.esp" line skips the whole
+// file unless that plugin is loaded. With no list or no such world, Active() stays false
 // and nothing else here runs, so every other world behaves as it did.
 namespace SnowShapes
 {

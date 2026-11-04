@@ -9,6 +9,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace SnowShapes
@@ -79,6 +80,12 @@ namespace SnowShapes
 			return listed;
 		}
 
+		bool PluginLoaded(const std::string& a_name)
+		{
+			auto* data = RE::TESDataHandler::GetSingleton();
+			return data && (data->LookupLoadedModByName(a_name) || data->LookupLoadedLightModByName(a_name));
+		}
+
 		// What feet can stand on. A ray also meets invisible volumes (NPC Senses' vision and aura boxes sit on
 		// layer 54 and the trigger layer), actors and clutter, none of which is the ground under a foot.
 		bool IsFloor(RE::COL_LAYER a_layer)
@@ -141,21 +148,32 @@ namespace SnowShapes
 		for (const auto& path : files) {
 			std::ifstream file(path);
 			if (!file) { continue; }
-			uint32_t shapes = 0, world = 0;
+			uint32_t world = 0;
+			std::string required;
 			std::vector<uint32_t> worlds;
+			std::vector<std::pair<std::string, std::string>> shapes;
 			while (std::getline(file, line)) {
 				if (SnowShapeList::Parse(line, model, key)) {
-					g_shapes.insert(key);
-					g_models.insert(model);
-					++shapes;
+					shapes.emplace_back(model, key);
 				} else if (SnowShapeList::ParseWorld(line, world)) {
 					worlds.push_back(world);
+				} else if (std::string plugin; SnowShapeList::ParseRequires(line, plugin)) {
+					required = plugin;
 				}
 			}
+			// Many keys also name the unmodded game's meshes, so a list for one mod's snow is only good beside that mod.
+			if (!required.empty() && !PluginLoaded(required)) {
+				logger::info("Snow shapes: {}: skipped, {} is not loaded", path.filename().string(), required);
+				continue;
+			}
+			for (const auto& [shapeModel, shapeKey] : shapes) {
+				g_shapes.insert(shapeKey);
+				g_models.insert(shapeModel);
+			}
 			// A world counts only beside shapes: without any there is nothing to route there.
-			if (shapes > 0) { g_listWorlds.insert(worlds.begin(), worlds.end()); }
-			logger::info("Snow shapes: {}: {} shape line(s), {} world line(s){}", path.filename().string(), shapes, worlds.size(),
-				shapes == 0 && !worlds.empty() ? ", worlds ignored" : "");
+			if (!shapes.empty()) { g_listWorlds.insert(worlds.begin(), worlds.end()); }
+			logger::info("Snow shapes: {}: {} shape line(s), {} world line(s){}", path.filename().string(), shapes.size(), worlds.size(),
+				shapes.empty() && !worlds.empty() ? ", worlds ignored" : "");
 		}
 		logger::info("Snow shapes: {} shape(s) in {} model(s) listed, {} world(s) named by lists", g_shapes.size(), g_models.size(), g_listWorlds.size());
 	}
