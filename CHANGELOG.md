@@ -8,7 +8,7 @@ Written as changes happen, not reconstructed afterwards (rule 61). Each version 
 * **failed** - built but crashed or malfunctioned; the number was reclaimed
 * **scratch** - a hypothesis-test build that never held a real number
 
-## 1.0.0 - 2026-11-03 - untested
+## 1.0.0 - 2026-11-03 - working
 
 ### Added
 - Dynamic Bloodpool Framework pools on land are drawn through Dynamic Terrain Deformation's blood decal path, so they take the same raise and the same trenches as the ground under them.

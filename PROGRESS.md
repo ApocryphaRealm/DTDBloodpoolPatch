@@ -15,8 +15,7 @@ setting; the rest of the diff is build identity (version resource, symbols, path
 
 ## Open
 
-- [ ] Build. Refused 2026-11-03 by the auto-mode classifier ("Code from External") on `configure.bat`: the owner has to
-      allow building this cloned repo. Then: health gate, `configure.bat`, `build.bat`, `package-mod.ps1 -Mod DTDBloodpoolPatch`.
-- [ ] Confirm the build matches shipped behaviour with EnableBloodPools=0.
-- [ ] In-game test (steps in the hand-off). Pool on land only; a pool spreading onto a rock will lift with the snow.
-- [ ] Before any release: public repo (GPL needs the source available), compatibility verdict, Nexus text.
+- [x] Built, packaged, recorded working 2026-11-03: the owner's hands-on test, combined run B-20261103-173705-9d34, SE 1.5.97.
+- [x] Public repo; compatibility verdict and Nexus text written 2026-11-03.
+- [ ] Frame time never measured. These are skinned meshes on the tessellation path, so that is the first thing to check.
+- [ ] Offered upstream as issue 11 on maglarnet/Dynamic_Terrain_Deformation_Skse. Retire this patch if it is merged.
