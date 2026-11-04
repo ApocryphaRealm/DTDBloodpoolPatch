@@ -7,6 +7,7 @@
 #include "Settings.h"
 #include "Shelter.h"
 #include "SnowCoverage.h"
+#include "SnowShapes.h"
 #include "SurfaceProfiles.h"
 
 #include <algorithm>
@@ -30,7 +31,9 @@ namespace Settings
 			auto            newest = ec ? std::filesystem::file_time_type{} : when;
 
 			const auto profiles = Surfaces::ProfilesWriteTime();
-			return profiles > newest ? profiles : newest;
+			if (profiles > newest) { newest = profiles; }
+			const auto shapes = SnowShapes::ListWriteTime();
+			return shapes > newest ? shapes : newest;
 		}
 
 		std::string Trim(std::string_view a_text)
@@ -67,6 +70,13 @@ namespace Settings
 		{
 			std::transform(a_value.begin(), a_value.end(), a_value.begin(),
 				[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			return a_value;
+		}
+
+		std::string AsUpper(std::string a_value)
+		{
+			std::transform(a_value.begin(), a_value.end(), a_value.begin(),
+				[](unsigned char c) { return static_cast<char>(std::toupper(c)); });
 			return a_value;
 		}
 
@@ -231,6 +241,8 @@ namespace Settings
 		} else if (key == "SnowCoverageBudget") {
 			snowCoverageBudget = static_cast<int>(
 				Clamped(key, AsFloat(key, value, 2048), 1.0f, 65536.0f));
+		} else if (key == "CityWorldsAllowed") {
+			cityWorldsAllowed = AsUpper(value);
 		} else if (key == "EnableStaticProbe") {
 			enableStaticProbe = AsBool(value);
 		} else if (key == "StaticProbeOffset") {
@@ -564,6 +576,7 @@ namespace Settings
 
 		snowStampRimSpan = snowStampReposeRate = snowStampRimNoise =
 			snowStampRimLean = snowStampChurn = -1.0f;
+		cityWorldsAllowed.clear();
 
 		std::string line;
 		while (std::getline(file, line)) {
@@ -650,6 +663,10 @@ namespace Settings
 					 "fade={} | coverage budget={}/frame",
 			enableSnowRaise, snowRaiseHeight, snowRaiseWeather, snowRaiseDistance,
 			snowRaiseFadeBand, snowCoverageBudget);
+
+			if (!cityWorldsAllowed.empty()) {
+				logger::info("City worlds allowed to stay active: {}", cityWorldsAllowed);
+			}
 
 			if (enableStaticProbe) {
 				logger::warn("Trap 8 probe is ON: static meshes are routed through the hull "

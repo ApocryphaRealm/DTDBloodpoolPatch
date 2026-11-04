@@ -19,6 +19,9 @@ namespace Tessellation
 
 
 		kBloodDecal,
+
+		// A listed snow mesh: takes the field, with no snow raise. The raise reads the land under it, not the mesh.
+		kSnowShape,
 	};
 
 	bool WantsDisplacement(Mode a_mode);

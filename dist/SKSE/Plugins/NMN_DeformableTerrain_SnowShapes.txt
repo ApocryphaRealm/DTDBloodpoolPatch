@@ -1,0 +1,9 @@
+# Snow meshes that take footprints, in a world named by CityWorldsAllowed in NMN_DeformableTerrain.ini.
+# Empty as shipped: nothing is routed, in any world.
+#
+# One shape a line: model path | shape name. Case does not matter.
+#   architecture\windhelm\whmarket01.nif | WHmarket01:0.008
+#
+# List only shapes people walk on. The ground field has no height, so a print shows on every listed shape
+# above or below it: a roof left on this list gets the prints of the street under it.
+# Marks are made while feet stand on a reference whose model is listed here.

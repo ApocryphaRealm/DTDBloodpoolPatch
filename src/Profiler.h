@@ -34,6 +34,7 @@ namespace Profiler
 
 		kStaticSeen,
 		kStaticRouted,
+		kShapeRouted,
 		kShaderBuilds,
 		kShelterLandAttempts,
 		kCoverageLandQueries,
@@ -83,6 +84,7 @@ namespace Profiler
 		kMagicImpacts,
 		kBloodUpdate,
 		kBloodLookup,
+		kShapeLookup,
 		kSparkleUpdate,
 		kCoverageFilter,
 		kShelterFilter,

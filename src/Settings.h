@@ -86,6 +86,9 @@ namespace Settings
 
 	inline float shelterFloorTolerance{ 8.0f };
 
+	// World form IDs (8 hex digits) that stay active although they are city worlds. Empty: every city world idles.
+	inline std::string cityWorldsAllowed{};
+
 	inline bool enableStaticProbe{ false };
 
 	inline float staticProbeOffset{ 0.0f };

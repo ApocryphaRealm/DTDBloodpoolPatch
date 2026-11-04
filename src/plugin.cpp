@@ -12,6 +12,7 @@
 #include "Settings.h"
 #include "ShaderRegistry.h"
 #include "SnowCoverage.h"
+#include "SnowShapes.h"
 #include "Shelter.h"
 #include "SurfaceProfiles.h"
 
@@ -41,6 +42,7 @@ namespace
 		Settings::Load();
 
 		Surfaces::LoadProfiles();
+		SnowShapes::Load();
 
 		if (!globals::Initialize()) {
 			logger::error("D3D device/context unavailable - renderer work disabled");

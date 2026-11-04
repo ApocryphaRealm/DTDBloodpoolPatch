@@ -331,6 +331,14 @@ int main(int a_argc, char** a_argv)
 	Settings::useClipmap = false;
 	Generate("blood_no_field", ColourSignature(), outDir, Tessellation::Mode::kBloodDecal);
 
+	Settings::useClipmap = true;
+	Settings::enableSnowRaise = true;
+	Settings::enableTessellationBounds = true;
+	Generate("shape_colour", ColourSignature(), outDir, Tessellation::Mode::kSnowShape);
+	Generate("shape_depth", DepthPrepassSignature(), outDir, Tessellation::Mode::kSnowShape);
+	Settings::enableTessellationBounds = false;
+	Generate("shape_unbounded", ColourSignature(), outDir, Tessellation::Mode::kSnowShape);
+
 	for (const auto& [technique, expected] : std::initializer_list<std::pair<uint32_t, bool>>{
 		{ 0x2000u, true }, { 0x2081u, true },
 		{ 0xC000u, false }, { 0x14000u, false },

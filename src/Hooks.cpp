@@ -18,6 +18,7 @@
 #include "ShaderReflection.h"
 #include "Shelter.h"
 #include "SnowCoverage.h"
+#include "SnowShapes.h"
 #include "SnowSparkle.h"
 #include "TerrainActivity.h"
 #include "TerrainActivityPolicy.h"
@@ -618,6 +619,49 @@ namespace Hooks
 			return true;
 		}
 
+		bool IsListedShape(RE::BSRenderPass* a_pass)
+		{
+			if (!a_pass || !SnowShapes::Active()) { return false; }
+			const auto started = Profiler::Ticks();
+			const bool listed = SnowShapes::Contains(a_pass->geometry);
+			Profiler::AddCpuTicks(Profiler::CpuScope::kShapeLookup, Profiler::Ticks() - started);
+			return listed;
+		}
+
+		// A listed snow mesh takes the field through the same stages as land. It is left native outside the
+		// field's reach, or when something else already holds the tessellation stages.
+		void RouteShape(RE::BSRenderPass* a_pass, const DrawInfo& a_info)
+		{
+			if (!Settings::useClipmap || !Clipmap::Ready() || !globals::Ready() || !ShouldRoute(a_pass)) { return; }
+			auto* context = globals::d3d::context;
+			ID3D11HullShader* hs{};
+			ID3D11DomainShader* ds{};
+			ID3D11GeometryShader* gs{};
+			D3D11_PRIMITIVE_TOPOLOGY topology{};
+			context->HSGetShader(&hs, nullptr, nullptr);
+			context->DSGetShader(&ds, nullptr, nullptr);
+			context->GSGetShader(&gs, nullptr, nullptr);
+			context->IAGetPrimitiveTopology(&topology);
+			const bool supported = !hs && !ds && !gs && topology == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			if (hs) { hs->Release(); }
+			if (ds) { ds->Release(); }
+			if (gs) { gs->Release(); }
+			if (!supported) {
+				static bool reported = false;
+				if (!reported) {
+					reported = true;
+					logger::info("Snow shapes: a draw was left native, another stage is in use or the topology is {}",
+						static_cast<int>(topology));
+				}
+				return;
+			}
+			if (const auto* signature = SignatureFor(a_info)) {
+				if (Tessellation::BeginDraw(a_info.vertexDesc, *signature, Tessellation::Mode::kSnowShape, {})) {
+					Profiler::Tally(Profiler::Count::kShapeRouted);
+				}
+			}
+		}
+
 		struct BSLightingShader_SetupGeometry
 		{
 			static void thunk(RE::BSShader* a_shader, RE::BSRenderPass* a_pass, uint32_t a_flags)
@@ -638,7 +682,8 @@ namespace Hooks
 				}
 
 				const bool bloodCandidate = a_pass && BloodDecals::MayContain(a_pass->geometry);
-				if (!Settings::enableStaticProbe && !BloodRoutingGate::Relevant(false, NearLandscape(a_pass), bloodCandidate)) { return; }
+				const bool shapeCandidate = IsListedShape(a_pass);
+				if (!Settings::enableStaticProbe && !shapeCandidate && !BloodRoutingGate::Relevant(false, NearLandscape(a_pass), bloodCandidate)) { return; }
 
 				if (!DrawnFromPlayerCamera()) {
 					return;
@@ -664,6 +709,10 @@ namespace Hooks
 					}
 				}
 
+				if (shapeCandidate) {
+					RouteShape(a_pass, info);
+					return;
+				}
 
 				if (!info.isNearLand) {
 					return;
@@ -725,7 +774,8 @@ namespace Hooks
 
 				const bool bloodCandidate = a_pass && BloodDecals::MayContain(a_pass->geometry);
 				const bool probeCandidate = Settings::enableStaticProbe && Settings::staticProbeOffset != 0.0f;
-				if (!probeCandidate && !BloodRoutingGate::Relevant(false, NearLandscape(a_pass), bloodCandidate)) { return; }
+				const bool shapeCandidate = IsListedShape(a_pass);
+				if (!probeCandidate && !shapeCandidate && !BloodRoutingGate::Relevant(false, NearLandscape(a_pass), bloodCandidate)) { return; }
 				const DrawInfo info = Describe(a_pass);
 
 				if (!UtilityRouting::IsCameraDepth(info.vertexTechnique)) {
@@ -755,6 +805,10 @@ namespace Hooks
 					}
 				}
 
+				if (shapeCandidate) {
+					RouteShape(a_pass, info);
+					return;
+				}
 
 				if (!info.isNearLand) {
 					return;
@@ -796,8 +850,21 @@ namespace Hooks
 			static inline REL::Relocation<decltype(thunk)> func;
 		};
 
+		// Bumped when settings reload, so a changed CityWorldsAllowed takes effect without leaving the world.
+		uint32_t g_worldRule{ 1 };
+
+		// A city world named in CityWorldsAllowed (8-digit form IDs) stays active. Empty: the shipped behaviour.
+		bool CityWorldAllowed(RE::FormID a_world)
+		{
+			return a_world != 0 && !Settings::cityWorldsAllowed.empty() &&
+				Settings::cityWorldsAllowed.find(std::format("{:08X}", a_world)) != std::string::npos;
+		}
+
 		void ApplyReloadedSettings()
 		{
+			++g_worldRule;
+			SnowShapes::Load();
+
 
 			Tessellation::Reset();
 			BloodDecals::Reset();
@@ -831,10 +898,13 @@ namespace Hooks
 			auto* world = cell && !cell->IsInteriorCell() ? player->GetWorldspace() : nullptr;
 			static RE::FormID lastWorld = 0;
 			static bool city = false;
+			static uint32_t cityRule = 0;
 			const auto worldID = world ? world->GetFormID() : 0;
-			if (worldID != lastWorld) {
-				city = TerrainActivity::IsCityWorld(world);
+			const bool ruleChanged = cityRule != g_worldRule;
+			if (worldID != lastWorld || ruleChanged) {
+				city = TerrainActivity::IsCityWorld(world) && !CityWorldAllowed(worldID);
 				lastWorld = worldID;
+				cityRule = g_worldRule;
 			}
 			static TerrainActivity::Policy policy;
 			const bool loaded = player && cell && player->Is3DLoaded();
@@ -856,6 +926,9 @@ namespace Hooks
 				Weather::Reset();
 				Profiler::Reset();
 			}
+			if (reset || ruleChanged) {
+				SnowShapes::SetWorld(policy.active && CityWorldAllowed(worldID) ? worldID : 0);
+			}
 			TerrainActivity::active.store(policy.active, std::memory_order_relaxed);
 			return policy.active;
 		}
@@ -873,8 +946,13 @@ namespace Hooks
 				static RE::FormID lastWorld = 0;
 				static bool city = false;
 				static bool wasEligible = false;
+				static uint32_t cityRule = 0;
 				const auto worldID = world ? world->GetFormID() : 0;
-				if (worldID != lastWorld) { city = TerrainActivity::IsCityWorld(world); lastWorld = worldID; }
+				if (worldID != lastWorld || cityRule != g_worldRule) {
+					city = TerrainActivity::IsCityWorld(world) && !CityWorldAllowed(worldID);
+					lastWorld = worldID;
+					cityRule = g_worldRule;
+				}
 				if (!Settings::enableTessellation || !player ||
 					!player->Is3DLoaded() || !cell || cell->IsInteriorCell() || !world || city) {
 					if (wasEligible) { Clipmap::InvalidateGather(); }

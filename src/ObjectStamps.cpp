@@ -11,6 +11,7 @@
 #include "Globals.h"
 #include "HeatSources.h"
 #include "Settings.h"
+#include "SnowShapes.h"
 #include "SnowSurface.h"
 #include "SurfaceProfiles.h"
 #include "SurfaceTypes.h"
@@ -56,6 +57,27 @@ namespace ObjectStamps
 
 		std::unordered_map<RE::FormID, Tracked> g_motion;
 		std::unordered_set<RE::FormID> g_visualBloodReported;
+
+		// One ray per object until it moves: a market holds many still objects and this runs every gather.
+		struct ShapeRest
+		{
+			float x{ 0.0f }, y{ 0.0f }, z{ 0.0f };
+			float surfaceZ{ 0.0f };
+			bool  onShape{ false };
+		};
+		std::unordered_map<RE::FormID, ShapeRest> g_shapeRest;
+
+		bool RestsOnShape(RE::FormID a_form, const RE::NiPoint3& a_at, float& a_surfaceZ)
+		{
+			auto& rest = g_shapeRest[a_form];
+			const bool known = rest.x == a_at.x && rest.y == a_at.y && rest.z == a_at.z;
+			if (!known) {
+				rest = { a_at.x, a_at.y, a_at.z, 0.0f, false };
+				rest.onShape = SnowShapes::OnListedShape(a_at, rest.surfaceZ);
+			}
+			a_surfaceZ = rest.surfaceZ;
+			return rest.onShape;
+		}
 
 		bool LeavesAMark(RE::TESObjectREFR* a_ref)
 		{
@@ -194,19 +216,23 @@ namespace ObjectStamps
 			const RE::NiPoint3 probe{ shapes[0].centre.x, shapes[0].centre.y,
 				shapes[0].centre.z };
 
+			float shapeZ = 0.0f;
+			const bool onShape = SnowShapes::Active() &&
+				RestsOnShape(a_ref->GetFormID(), { probe.x, probe.y, groundZ }, shapeZ);
+
 			auto* tes = RE::TES::GetSingleton();
 			float landZ = 0.0f;
-			if (!tes || !tes->GetLandHeight(probe, landZ)) {
+			if (!onShape && (!tes || !tes->GetLandHeight(probe, landZ))) {
 				return 0;
 			}
 
-			const float surfaceZ = landZ + SnowSurface::LiftAt(probe.x, probe.y);
+			const float surfaceZ = onShape ? shapeZ : landZ + SnowSurface::LiftAt(probe.x, probe.y);
 			const float drop = groundZ - surfaceZ;
 			if (drop > Settings::objectContactTolerance || drop < -Settings::objectSinkLimit) {
 				return 0;
 			}
 
-			const auto  ground = Surfaces::GroundAt(probe);
+			const auto  ground = onShape ? SnowShapes::ShapeGround() : Surfaces::GroundAt(probe);
 			const auto  surface = ground.type;
 			const auto& response = ground.response;
 
@@ -220,7 +246,7 @@ namespace ObjectStamps
 				const auto& shape = shapes[i];
 
 				Clipmap::Stamp stamp{};
-				stamp.snow = surface == Surfaces::Type::kSnow;
+				stamp.snow = !onShape && surface == Surfaces::Type::kSnow;
 				stamp.x = shape.centre.x;
 				stamp.y = shape.centre.y;
 				stamp.radius =
@@ -235,7 +261,7 @@ namespace ObjectStamps
 				const float ordinary = Settings::stampDepth * Settings::objectStampDepthScale *
 					bulk * response.depthScale * Weather::DepthScale();
 
-				stamp.depth = Surfaces::MarkDepth(surface, ordinary, bulk, stamp.x, stamp.y);
+				stamp.depth = onShape ? ordinary : Surfaces::MarkDepth(surface, ordinary, bulk, stamp.x, stamp.y);
 				stamp.shoulder = std::clamp(response.shoulder, 0.0f, 0.95f);
 				stamp.decay = std::clamp(
 					Settings::stampDecayPerSecond * response.decayScale * Weather::DecayScale(),
@@ -320,6 +346,7 @@ namespace ObjectStamps
 
 		const std::scoped_lock lock(g_lock);
 		++g_frame;
+		if (g_shapeRest.size() > 1024) { g_shapeRest.clear(); }
 
 		g_timer -= a_deltaSeconds;
 		if (!g_haveSet || g_timer <= 0.0f) {
@@ -387,6 +414,7 @@ namespace ObjectStamps
 		const std::scoped_lock lock(g_lock);
 		g_candidates.clear();
 		g_motion.clear();
+		g_shapeRest.clear();
 	}
 
 	void Reset()
@@ -396,6 +424,7 @@ namespace ObjectStamps
 		const std::scoped_lock lock(g_lock);
 		g_candidates.clear();
 		g_motion.clear();
+		g_shapeRest.clear();
 		g_reported.clear();
 		g_timer = 0.0f;
 		g_haveSet = false;

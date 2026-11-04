@@ -108,7 +108,7 @@ namespace Tessellation
 
 			if (a_displace) {
 
-				const bool field = a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal;
+				const bool field = a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal || a_mode == Mode::kSnowShape;
 
 				const char* const lift =
 					"\tfloat  d  = kLift;\n";
@@ -148,7 +148,7 @@ namespace Tessellation
 				}
 
 				const bool raising =
-					field &&
+					field && a_mode != Mode::kSnowShape &&
 					Settings::enableSnowRaise && Settings::useClipmap &&
 					Settings::snowRaiseHeight > 0.0f;
 
@@ -653,6 +653,9 @@ namespace Tessellation
 					out += EmitBlendWeights(a_signature);
 
 					out += EmitFieldDebug(a_signature);
+				} else if (a_mode == Mode::kSnowShape) {
+					out += EmitNormalRecompute(a_signature);
+					out += EmitFieldDebug(a_signature);
 				}
 			}
 
@@ -673,6 +676,7 @@ namespace Tessellation
 		std::unordered_map<uint64_t, Pair>    g_cache;
 		std::unordered_map<uint64_t, Pair>    g_probeCache;
 		std::unordered_map<uint64_t, Pair>    g_bloodCache;
+		std::unordered_map<uint64_t, Pair>    g_shapeCache;
 
 		std::unordered_map<uint64_t, Pair>& CacheFor(Mode a_mode)
 		{
@@ -681,6 +685,8 @@ namespace Tessellation
 				return g_probeCache;
 			case Mode::kBloodDecal:
 				return g_bloodCache;
+			case Mode::kSnowShape:
+				return g_shapeCache;
 			default:
 				return g_cache;
 			}
@@ -919,7 +925,7 @@ namespace Tessellation
 		context->DSGetShader(&g_saved.ds, nullptr, nullptr);
 		context->GSGetShader(&g_saved.gs, nullptr, nullptr);
 		context->IAGetPrimitiveTopology(&g_saved.topology);
-		if (a_mode == Mode::kBloodDecal) { g_bloodResources.Capture(context); }
+		if (a_mode == Mode::kBloodDecal || a_mode == Mode::kSnowShape) { g_bloodResources.Capture(context); }
 
 		context->GSSetShader(nullptr, nullptr, 0);
 
@@ -934,7 +940,7 @@ namespace Tessellation
 			frameCB->Release();
 		}
 
-		if (a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal) {
+		if (a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal || a_mode == Mode::kSnowShape) {
 			if (Settings::useClipmap) {
 				Clipmap::BindDomain(context);
 				SnowCoverage::BindDomain(context);
@@ -1007,7 +1013,7 @@ namespace Tessellation
 			if (g_savedBiasDS) { g_savedBiasDS->Release(); g_savedBiasDS = nullptr; }
 			g_biasActive = false;
 		}
-		if (g_activeMode == Mode::kBloodDecal) {
+		if (g_activeMode == Mode::kBloodDecal || g_activeMode == Mode::kSnowShape) {
 			g_bloodResources.Restore(context);
 		} else if (g_activeMode == Mode::kLandscape) {
 			if (Settings::useClipmap) {
@@ -1072,6 +1078,7 @@ namespace Tessellation
 			return Settings::staticProbeOffset != 0.0f;
 		case Mode::kLandscape:
 		case Mode::kBloodDecal:
+		case Mode::kSnowShape:
 			return Settings::debugWorldZOffset != 0.0f ||
 				   Settings::debugWaveAmplitude != 0.0f ||
 				   (Settings::useClipmap && Clipmap::Ready());
@@ -1084,7 +1091,7 @@ namespace Tessellation
 	bool WantsSubdivision(Mode a_mode)
 	{
 
-		return (a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal) && WantsDisplacement(a_mode);
+		return (a_mode == Mode::kLandscape || a_mode == Mode::kBloodDecal || a_mode == Mode::kSnowShape) && WantsDisplacement(a_mode);
 	}
 
 	void PrepareFrame()
@@ -1093,7 +1100,7 @@ namespace Tessellation
 		if (!globals::Ready()) { return; }
 		const int64_t started = Profiler::Ticks();
 		const std::scoped_lock lock(g_cacheLock);
-		for (auto* cache : { &g_cache, &g_probeCache, &g_bloodCache }) {
+		for (auto* cache : { &g_cache, &g_probeCache, &g_bloodCache, &g_shapeCache }) {
 
 			const bool waiting = std::any_of(cache->begin(), cache->end(), [](const auto& entry) {
 				return entry.second.pending &&
@@ -1117,7 +1124,7 @@ namespace Tessellation
 		TerrainBlendDiagnostics::Reset();
 		const std::scoped_lock lock(g_cacheLock);
 		ShaderCompiler::GetWorker().CancelQueued();
-		for (auto* cache : { &g_cache, &g_probeCache, &g_bloodCache }) {
+		for (auto* cache : { &g_cache, &g_probeCache, &g_bloodCache, &g_shapeCache }) {
 			for (auto& [desc, pair] : *cache) {
 				if (pair.hs) {
 					pair.hs->Release();

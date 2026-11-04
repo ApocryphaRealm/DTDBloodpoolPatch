@@ -543,6 +543,7 @@ namespace Profiler
 				std::pair{ CpuScope::kMagicImpacts, "Magic impacts CPU" },
 				std::pair{ CpuScope::kBloodUpdate, "Blood update CPU" },
 				std::pair{ CpuScope::kBloodLookup, "Blood lookup CPU" },
+				std::pair{ CpuScope::kShapeLookup, "Shape lookup CPU" },
 				std::pair{ CpuScope::kSparkleUpdate, "Sparkle update CPU" },
 				std::pair{ CpuScope::kCoverageFilter, "Coverage filter CPU" },
 				std::pair{ CpuScope::kShelterFilter, "Shelter filter CPU" },
@@ -597,6 +598,11 @@ namespace Profiler
 			if (staticSeen > 0.0) {
 				logger::info("  Trap 8 probe      seen {:5.1f}  routed {:5.1f} static draws/frame",
 					staticSeen, count(Count::kStaticRouted));
+			}
+
+			const double shapesRouted = count(Count::kShapeRouted);
+			if (shapesRouted > 0.0) {
+				logger::info("  Snow shapes       routed {:5.1f} draws/frame", shapesRouted);
 			}
 
 			if (colourRouted > 0.0f && depthRouted > 1.5f * colourRouted) {

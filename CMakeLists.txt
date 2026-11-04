@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.21)
 
 project(
 	NMN_DeformableTerrain
-	VERSION 1.0.0
+	VERSION 1.1.0
 	LANGUAGES CXX
 )
 
@@ -38,6 +38,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/ShaderRegistry.cpp
     src/Shelter.cpp
     src/SnowCoverage.cpp
+    src/SnowShapes.cpp
     src/SnowSparkle.cpp
     src/SnowSurface.cpp
     src/SurfaceProfiles.cpp
@@ -107,6 +108,10 @@ if(BUILD_OFFLINE_TOOLS)
 
     target_compile_features(ShaderGen PRIVATE cxx_std_23)
     target_link_libraries(ShaderGen PRIVATE d3dcompiler.lib dxguid.lib bcrypt.lib)
+
+    add_executable(SnowShapeListTest tools/offline/SnowShapeListTest.cpp)
+    target_include_directories(SnowShapeListTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_compile_features(SnowShapeListTest PRIVATE cxx_std_23)
 
     add_executable(StampSurfaceTest tools/offline/StampSurfaceTest.cpp)
     add_executable(TerrainProcessingGuardTest tools/offline/TerrainProcessingGuardTest.cpp)

@@ -19,6 +19,7 @@
 #include "Settings.h"
 #include "Shelter.h"
 #include "SnowCoverage.h"
+#include "SnowShapes.h"
 #include "SnowSparkle.h"
 #include "SurfaceProfiles.h"
 #include "SurfaceTypes.h"
@@ -529,7 +530,11 @@ namespace Clipmap
 				}
 			}
 
-			const auto  ground = Surfaces::GroundAt(position);
+			// On a listed snow mesh the surface is the mesh under the feet, not the land far below it.
+			float shapeZ = 0.0f;
+			const bool onShape = SnowShapes::Active() && SnowShapes::OnListedShape(position, shapeZ);
+
+			const auto  ground = onShape ? SnowShapes::ShapeGround() : Surfaces::GroundAt(position);
 			const auto  surface = ground.type;
 			const auto& response = ground.response;
 
@@ -582,7 +587,18 @@ namespace Clipmap
 						return false;
 					}
 
-					if (clearance > 0.0f && tes) {
+					if (onShape && clearance > 0.0f) {
+						// A limb well above the feet needs no ray; the slack allows for a slope under the stride.
+						const float bottom = centre.z - radius;
+						if (bottom - feetZ > clearance + 32.0f) {
+							return false;
+						}
+						float underZ = 0.0f;
+						if (!SnowShapes::OnListedShape({ centre.x, centre.y, feetZ }, underZ) ||
+							bottom - underZ > clearance) {
+							return false;
+						}
+					} else if (clearance > 0.0f && tes) {
 						float landZ = 0.0f;
 						if (tes->GetLandHeight(centre, landZ) &&
 							(centre.z - radius) - landZ > clearance) {
@@ -591,7 +607,9 @@ namespace Clipmap
 					}
 
 					Stamp stamp{};
-					stamp.snow = surface == Surfaces::Type::kSnow;
+					// The field floors a snow stamp at the blanket read from the land. Under a street that
+					// blanket is nothing, so a snow flag here would clamp the print away.
+					stamp.snow = !onShape && surface == Surfaces::Type::kSnow;
 					stamp.x = centre.x;
 					stamp.y = centre.y;
 					stamp.radius = radius * Settings::stampRadiusScale * response.radiusScale;
@@ -623,7 +641,7 @@ namespace Clipmap
 					const float ordinary =
 						Settings::stampDepth * response.depthScale * Weather::DepthScale();
 
-					stamp.depth = Surfaces::MarkDepth(surface, ordinary, 1.0f, stamp.x, stamp.y);
+					stamp.depth = onShape ? ordinary : Surfaces::MarkDepth(surface, ordinary, 1.0f, stamp.x, stamp.y);
 					stamp.shoulder = std::clamp(response.shoulder, 0.0f, 0.95f);
 
 					stamp.decay = std::clamp(
