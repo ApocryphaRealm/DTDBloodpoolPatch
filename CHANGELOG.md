@@ -8,7 +8,7 @@ Written as changes happen, not reconstructed afterwards (rule 61). Each version 
 * **failed** - built but crashed or malfunctioned; the number was reclaimed
 * **scratch** - a hypothesis-test build that never held a real number
 
-## 1.1.0 - 2026-11-04 - untested
+## 1.1.0 - 2026-11-04 - working
 
 ### Added
 - Lists are also read from every .txt in SKSE\Plugins\NMN_DeformableTerrain_SnowShapes\, so a mod can ship a list without replacing a file or caring about load order.
@@ -20,6 +20,12 @@ Written as changes happen, not reconstructed afterwards (rule 61). Each version 
 
 ### Fixed
 - The ground ray under a listed shape passes through actors and invisible volumes such as NPC Senses' boxes, instead of giving up on that step's print. Its log line now gives the layer of what it hit.
+
+### Known
+- As a blood pool appears, thin lines can show across it: the pool mesh has zero-area triangles that tessellation draws as lines. Dynamic Terrain Deformation 1.3 discards them; this patch does not yet.
+
+### Changed
+- The README gives this patch's own source link and the accurate live-reload time (about half a second).
 
 ## 1.0.0 - 2026-11-03 - working
 

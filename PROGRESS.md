@@ -62,4 +62,5 @@ look soft. Going finer means splitting those triangles in the NIF.
 - [x] Public repo; compatibility verdict and Nexus text written 2026-11-03.
 - [ ] Frame time never measured. These are skinned meshes on the tessellation path, so that is the first thing to check.
 - [ ] Snow shapes: first in-game tests (Test 1 decides K1). Episode 113 in the falsification log holds the killing conditions.
-- [ ] Offered upstream as issue 11 on maglarnet/Dynamic_Terrain_Deformation_Skse. Retire this patch if it is merged.
+- [x] Offered upstream as issue 11 on maglarnet/Dynamic_Terrain_Deformation_Skse: merged 2026-11-05 for DTD 1.3 (author's commit on main, credited in NOTICE). The author asked us to keep the patch up until 1.3 ships; retire the blood pool part then. The snow-shape route is not upstream.
+- [ ] Upstream also discards zero-area patches on the blood route (thin lines as a pool appears). Not in 1.1.0; noted as Known.

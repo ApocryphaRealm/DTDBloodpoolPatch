@@ -10,7 +10,7 @@ Install: below Dynamic Terrain Deformation, so this NMN_DeformableTerrain.dll wi
 Surfaces folders are still used, and this patch ships no INI.
 
 Setting: EnableBloodPools = 1 is the default. Add EnableBloodPools = 0 to NMN_DeformableTerrain.ini to compare, then
-save; it applies to the next frame.
+save; with Dynamic Terrain Deformation's live reload on, a running game picks it up within about half a second.
 
 A pool on a rock, bridge or floor is left as it was. A pool that starts on land and spreads onto a rock lifts with the
 snow beside it.
@@ -25,3 +25,7 @@ shows the prints of the street under it.
 
 Licence: GPL-3.0-only. Based on Dynamic Terrain Deformation by NearMidnightNow, source at
 https://github.com/maglarnet/Dynamic_Terrain_Deformation_Skse (branch 1.7, commit b83ebf3).
+This patch's own source: https://github.com/ApocryphaRealm/DTDBloodpoolPatch (release tag v1.1.0).
+
+Known: Dynamic Terrain Deformation 1.3 has the blood pool change built in; once it is out, this patch is not needed
+for blood pools. As a pool appears, thin lines can show across it (zero-area triangles in the pool mesh).
