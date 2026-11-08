@@ -64,3 +64,4 @@ look soft. Going finer means splitting those triangles in the NIF.
 - [ ] Snow shapes: first in-game tests (Test 1 decides K1). Episode 113 in the falsification log holds the killing conditions.
 - [x] Offered upstream as issue 11 on maglarnet/Dynamic_Terrain_Deformation_Skse: merged 2026-11-05 for DTD 1.3 (author's commit on main, credited in NOTICE). The author asked us to keep the patch up until 1.3 ships; retire the blood pool part then. The snow-shape route is not upstream.
 - [ ] Upstream also discards zero-area patches on the blood route (thin lines as a pool appears). Not in 1.1.0; noted as Known.
+- [ ] Snow-shape lists offered upstream by Nexus PM to NearMidnightNow 2026-11-08 16:35 (https://forums.nexusmods.com/messenger/6141949/), at the owner's request: carry them in DTD 1.3 or later so list patches (Windhelm Is Snowy - Deformable Snow, 198477) work on the stock DLL. Waiting on the answer.
